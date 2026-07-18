@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, type Employee, type Attendance } from '@/lib/supabase'
-import { Clock, LogIn, LogOut, CheckCircle, AlertCircle, Shield } from 'lucide-react'
+import { Clock, LogIn, LogOut, CheckCircle, AlertCircle, Shield, Search } from 'lucide-react'
 import Link from 'next/link'
 
 export default function EmployeePage() {
@@ -40,7 +40,6 @@ export default function EmployeePage() {
     }
 
     setEmployee(emp)
-
     const today = new Date().toISOString().split('T')[0]
     const { data: att } = await supabase
       .from('attendance')
@@ -66,12 +65,7 @@ export default function EmployeePage() {
       setMessage({ text: 'Failed to punch in. Please try again.', type: 'error' })
     } else {
       setMessage({ text: `Welcome, ${employee.name}! Punched in successfully.`, type: 'success' })
-      const { data: att } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('employee_id', employee.id)
-        .eq('work_date', today)
-        .single()
+      const { data: att } = await supabase.from('attendance').select('*').eq('employee_id', employee.id).eq('work_date', today).single()
       setTodayAttendance(att || null)
     }
     setLoading(false)
@@ -80,21 +74,13 @@ export default function EmployeePage() {
   const handlePunchOut = async () => {
     if (!employee || !todayAttendance) return
     setLoading(true)
-    const { error } = await supabase
-      .from('attendance')
-      .update({ punch_out: new Date().toISOString() })
-      .eq('id', todayAttendance.id)
+    const { error } = await supabase.from('attendance').update({ punch_out: new Date().toISOString() }).eq('id', todayAttendance.id)
     if (error) {
       setMessage({ text: 'Failed to punch out. Please try again.', type: 'error' })
     } else {
       setMessage({ text: `Goodbye, ${employee.name}! Have a great day!`, type: 'success' })
       const today = new Date().toISOString().split('T')[0]
-      const { data: att } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('employee_id', employee.id)
-        .eq('work_date', today)
-        .single()
+      const { data: att } = await supabase.from('attendance').select('*').eq('employee_id', employee.id).eq('work_date', today).single()
       setTodayAttendance(att || null)
     }
     setLoading(false)
@@ -107,108 +93,120 @@ export default function EmployeePage() {
     if (!todayAttendance?.punch_in) return null
     const end = todayAttendance.punch_out ? new Date(todayAttendance.punch_out) : new Date()
     const diff = Math.floor((end.getTime() - new Date(todayAttendance.punch_in).getTime()) / 60000)
-    const h = Math.floor(diff / 60)
-    const m = diff % 60
-    return `${h}h ${m}m`
+    return `${Math.floor(diff / 60)}h ${diff % 60}m`
   }
 
   const isPunchedIn = !!todayAttendance?.punch_in && !todayAttendance?.punch_out
   const isPunchedOut = !!todayAttendance?.punch_out
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col">
-      <header className="border-b border-white/10 backdrop-blur-sm bg-white/5">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
+              <Clock className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-bold text-lg leading-tight">AMM</h1>
-              <p className="text-blue-300 text-xs">Attendance Management System</p>
+              <span className="font-bold text-slate-800 text-base tracking-tight">AMM</span>
+              <span className="text-slate-400 text-xs ml-2 hidden sm:inline">Attendance Management System</span>
             </div>
           </div>
           <Link
             href="/admin"
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
+            className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50"
           >
-            <Shield className="w-4 h-4" />
-            Admin
+            <Shield className="w-3.5 h-3.5" />
+            Admin Portal
           </Link>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="text-5xl font-bold text-white tabular-nums">
-              {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+
+          {/* Time Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-4 text-center">
+            <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full mb-4 border border-emerald-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              Live
             </div>
-            <div className="text-blue-300 mt-1">
-              {currentTime.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            <div className="text-6xl font-bold text-slate-800 tabular-nums tracking-tight">
+              {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div className="text-slate-500 mt-2 text-sm">
+              {currentTime.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6 shadow-2xl">
-            <h2 className="text-white font-semibold text-lg mb-4 text-center">Employee Check-In / Check-Out</h2>
+          {/* Check-in Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 className="text-slate-800 font-semibold text-base mb-1">Employee Check-In / Check-Out</h2>
+            <p className="text-slate-400 text-xs mb-4">Enter your employee code to mark attendance</p>
 
             <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Enter Employee Code (e.g. EMP001)"
-                value={employeeCode}
-                onChange={e => setEmployeeCode(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && searchEmployee()}
-                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="e.g. EMP001"
+                  value={employeeCode}
+                  onChange={e => setEmployeeCode(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchEmployee()}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white transition"
+                />
+              </div>
               <button
                 onClick={searchEmployee}
                 disabled={searching}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-medium transition-colors disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 shadow-sm"
               >
                 {searching ? '...' : 'Find'}
               </button>
             </div>
 
+            {/* Message */}
             {message && (
-              <div className={`flex items-center gap-2 rounded-xl p-3 mb-4 text-sm ${message.type === 'success' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
-                {message.type === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+              <div className={`flex items-start gap-2 rounded-xl p-3 mb-4 text-sm border ${
+                message.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : 'bg-red-50 text-red-600 border-red-100'
+              }`}>
+                {message.type === 'success'
+                  ? <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
                 {message.text}
               </div>
             )}
 
+            {/* Employee Card */}
             {employee && (
-              <div className="mt-2">
-                <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white font-bold text-lg">
+              <div>
+                <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-sm flex-shrink-0">
                       {employee.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-white font-semibold">{employee.name}</div>
-                      <div className="text-slate-400 text-sm">{employee.position} · {employee.department}</div>
-                      <div className="text-slate-500 text-xs">{employee.employee_code}</div>
+                      <div className="text-slate-800 font-semibold text-sm">{employee.name}</div>
+                      <div className="text-slate-500 text-xs">{employee.position}{employee.department ? ` · ${employee.department}` : ''}</div>
+                      <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-mono px-1.5 py-0.5 rounded mt-0.5">{employee.employee_code}</span>
                     </div>
                   </div>
 
                   {todayAttendance && (
-                    <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <div className="text-xs text-slate-400">Punch In</div>
-                        <div className="text-white text-sm font-medium">
-                          {todayAttendance.punch_in ? formatTime(todayAttendance.punch_in) : '—'}
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200">
+                      {[
+                        { label: 'Punch In', value: todayAttendance.punch_in ? formatTime(todayAttendance.punch_in) : '—', color: 'text-emerald-600' },
+                        { label: 'Punch Out', value: todayAttendance.punch_out ? formatTime(todayAttendance.punch_out) : '—', color: 'text-amber-600' },
+                        { label: 'Duration', value: getWorkDuration() || '—', color: 'text-indigo-600' },
+                      ].map(item => (
+                        <div key={item.label} className="text-center">
+                          <div className="text-slate-400 text-xs mb-0.5">{item.label}</div>
+                          <div className={`font-semibold text-sm ${item.color}`}>{item.value}</div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-400">Punch Out</div>
-                        <div className="text-white text-sm font-medium">
-                          {todayAttendance.punch_out ? formatTime(todayAttendance.punch_out) : '—'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-400">Duration</div>
-                        <div className="text-white text-sm font-medium">{getWorkDuration() || '—'}</div>
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -217,9 +215,9 @@ export default function EmployeePage() {
                   <button
                     onClick={handlePunchIn}
                     disabled={loading}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shadow-sm"
                   >
-                    <LogIn className="w-5 h-5" />
+                    <LogIn className="w-4 h-4" />
                     {loading ? 'Processing...' : 'Punch In'}
                   </button>
                 )}
@@ -227,24 +225,24 @@ export default function EmployeePage() {
                   <button
                     onClick={handlePunchOut}
                     disabled={loading}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shadow-sm"
                   >
-                    <LogOut className="w-5 h-5" />
+                    <LogOut className="w-4 h-4" />
                     {loading ? 'Processing...' : 'Punch Out'}
                   </button>
                 )}
                 {isPunchedOut && (
-                  <div className="w-full bg-slate-700 text-slate-300 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                    Attendance Marked for Today
+                  <div className="w-full bg-slate-100 text-slate-500 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-slate-200">
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                    Attendance Complete for Today
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          <p className="text-center text-slate-500 text-xs mt-4">
-            Enter your employee code and press Find to check in or out
+          <p className="text-center text-slate-400 text-xs mt-4">
+            AMM · Attendance Management System
           </p>
         </div>
       </main>
